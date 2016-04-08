@@ -22,3 +22,6 @@ _testmain.go
 *.exe
 *.test
 *.prof
+
+cf_will_it_connect
+scratch
