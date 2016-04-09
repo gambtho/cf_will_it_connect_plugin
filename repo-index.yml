@@ -1,0 +1,20 @@
+- name: WillItConnect
+  description: Can CF connect to a thing?
+  version: _TAG_
+  created: 2016-4-9
+  updated: 2016-4-9
+  company:
+  authors:
+  - name: Thomas Gamble
+    homepage: http://github.com/gambtho
+  homepage: https://github.com/gambtho/cf_will_it_connect_plugin
+  binaries:
+  - platform: osx
+    url: https://github.com/gambtho/cf_will_it_connect_plugin/raw/_TAG_/bin/osx/cf_will_it_connect_plugin
+    checksum: osx-sha1
+  - platform: win64
+    url: https://github.com/gambtho/cf_will_it_connect_plugin/raw/_TAG_/bin/win64/cf_will_it_connect_plugin.exe
+    checksum: win64-sha1
+  - platform: linux64
+    url: https://github.com/gambtho/cf_will_it_connect_plugin/raw/_TAG_/bin/linux64/cf_will_it_connect_plugin
+    checksum: linux64-sha1

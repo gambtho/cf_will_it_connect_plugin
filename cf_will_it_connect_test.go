@@ -2,9 +2,6 @@ package main_test
 
 import (
 	"errors"
-	"fmt"
-	"net/http"
-	"net/http/httptest"
 
 	"github.com/cloudfoundry/cli/plugin/pluginfakes"
 	. "github.com/cloudfoundry/cli/testhelpers/io"
@@ -12,9 +9,12 @@ import (
 	. "github.com/gambtho/cf_will_it_connect"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"gopkg.in/h2non/gock.v0"
 )
 
-const wicURLSuffix string = "/v2/willitconnect"
+const apiURL string = "http://api.cfapps.pivotal.io"
+const wicPath string = "/v2/willitconnect"
+const wicURL string = "http://willitconnect.cfapps.pivotal.io"
 
 var _ = Describe("CfWillItConnect", func() {
 
@@ -39,43 +39,53 @@ var _ = Describe("CfWillItConnect", func() {
 			output := CaptureOutput(func() {
 				willItConnectPlugin.Run(fakeCliConnection, []string{"willitconnect", "foo.com", "80"})
 			})
-			Expect(output).To(ContainSubstrings([]string{"Unable to determine CF ApiEndpoint"}))
+			Expect(output).To(ContainSubstrings([]string{"Unable to determine Api endpoint, use cf login first"}))
+		})
+
+		It("displays an error when the CF api is not a valid url", func() {
+			fakeCliConnection.ApiEndpointReturns("blah", nil)
+			output := CaptureOutput(func() {
+				willItConnectPlugin.Run(fakeCliConnection, []string{"willitconnect", "foo.com", "80"})
+			})
+			Expect(output).To(ContainSubstrings([]string{"Error parsing Api endpoint"}))
 		})
 
 		It("displays the host, port, api, and a connect confirmation", func() {
-			server := fakeServer(200, `{"lastChecked": 0,"entry": "foo.com","canConnect": true,"httpStatus": 200,"validHostname": false,"validUrl": true}`)
-			defer server.Close()
-			fakeCliConnection.ApiEndpointReturns(server.URL, nil)
+			defer gock.Off()
+
+			gock.New(wicURL).
+				Post(wicPath).
+				JSON(`{"target":"` + "foo.com" + `:` + "80" + `}`).
+				Reply(200).
+				JSON(`{"lastChecked": 0, "entry": "foo.com", "canConnect": true, "httpStatus": 200, "validHostname": false, "validUrl": true}`)
+
+			fakeCliConnection.ApiEndpointReturns(apiURL, nil)
 			output := CaptureOutput(func() {
 				willItConnectPlugin.Run(fakeCliConnection, []string{"willitconnect", "foo.com", "80"})
 			})
 			Expect(output).To(ContainSubstrings([]string{"Host:", "foo.com", "-",
 				"Port:", "80", "-",
-				"WillItConnect:", server.URL + wicURLSuffix}))
+				"WillItConnect:", wicURL + wicPath}))
 			Expect(output).To(ContainSubstrings([]string{"I am able to connect"}))
 		})
 
 		It("displays the host, port, api, and an unable to connect failure", func() {
-			server := fakeServer(200, `{"lastChecked": 0,"entry": "bar.com","canConnect":
-				false,"httpStatus": 200,"validHostname": false,"validUrl": true}`)
-			defer server.Close()
-			fakeCliConnection.ApiEndpointReturns(server.URL, nil)
+			defer gock.Off()
+
+			gock.New(wicURL).
+				Post(wicPath).
+				JSON(`{"target":"` + "bar.com" + `:` + "80" + `}`).
+				Reply(200).
+				JSON(`{"lastChecked": 0,"entry": "bar.com","canConnect":false,"validHostname": false,"validUrl": true}`)
+
+			fakeCliConnection.ApiEndpointReturns(apiURL, nil)
 			output := CaptureOutput(func() {
 				willItConnectPlugin.Run(fakeCliConnection, []string{"willitconnect", "bar.com", "80"})
 			})
 			Expect(output).To(ContainSubstrings([]string{"Host:", "bar.com", "-",
 				"Port:", "80", "-",
-				"WillItConnect:", server.URL + wicURLSuffix}))
+				"WillItConnect:", wicURL + wicPath}))
 			Expect(output).To(ContainSubstrings([]string{"I am unable to connect"}))
 		})
 	})
 })
-
-func fakeServer(code int, body string) *httptest.Server {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(code)
-		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprintln(w, body)
-	}))
-	return server
-}
