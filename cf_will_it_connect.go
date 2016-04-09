@@ -5,13 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/url"
 
 	"github.com/cloudfoundry/cli/plugin"
 )
 
 const wicPath string = "/v2/willitconnect"
-const wicRoute string = "willitconnect"
+const wicRoute string = "willitconnect."
 
 //WillItConnect ...
 type WillItConnect struct{}
@@ -19,7 +18,7 @@ type WillItConnect struct{}
 //GetMetadata ...
 func (c *WillItConnect) GetMetadata() plugin.PluginMetadata {
 	return plugin.PluginMetadata{
-		Name: "WillItConnect",
+		Name: "cf-willitconnect",
 		Version: plugin.VersionType{
 			Major: 1,
 			Minor: 0,
@@ -53,23 +52,26 @@ func (c *WillItConnect) Run(cliConnection plugin.CliConnection, args []string) {
 
 	host := args[1]
 	port := args[2]
-	api, err := cliConnection.ApiEndpoint()
 
+	currOrg, err := cliConnection.GetCurrentOrg()
 	if err != nil {
-		fmt.Println([]string{"Unable to determine Api endpoint, use cf login first"})
+		fmt.Println("Unable to connect to CF, use cf login first")
 		return
 	}
 
-	fmt.Println(api)
-	apiURL, err := url.Parse(api)
-
-	if err != nil || len(apiURL.Host) < 3 {
-		fmt.Println([]string{"Error parsing Api endpoint"})
+	org, err := cliConnection.GetOrg(currOrg.OrganizationFields.Name)
+	if err != nil {
+		fmt.Println("Unable to find valid org, please view cf target")
 		return
 	}
 
-	baseURL := (apiURL.Host[3:])
-	wicURL := apiURL.Scheme + "://" + wicRoute + baseURL + wicPath
+	baseURL := org.Domains[0].Name
+	if baseURL == "" {
+		fmt.Println("Unable to find valid domain, please view cf domains")
+		return
+	}
+
+	wicURL := "https://" + wicRoute + baseURL + wicPath
 	fmt.Println([]string{"Host: ", host, " - Port: ", port, " - WillItConnect: ", wicURL})
 	c.connect(host, port, wicURL)
 
@@ -86,7 +88,7 @@ type wicResponse struct {
 }
 
 func (c *WillItConnect) connect(host string, port string, url string) {
-	payload := []byte(`{"target":"` + host + `:` + port + `}`)
+	payload := []byte(`{"target":"` + host + `:` + port + `"}`)
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(payload))
 	req.Header.Set("Content-Type", "application/json")
 

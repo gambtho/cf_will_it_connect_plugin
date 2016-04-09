@@ -1,4 +1,4 @@
-- name: WillItConnect
+- name: cf-willitconnect
   description: Can CF connect to a thing?
   version: _TAG_
   created: 2016-4-9
