@@ -18,6 +18,6 @@ $ cf willitconnect <host> <port>
 
 ##Todo
 
-Add http status info
-Allow proxy usage
-Adjust willitconnect route
+* Add http status info
+* Allow proxy usage
+* Adjust willitconnect route
