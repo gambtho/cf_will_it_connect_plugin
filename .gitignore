@@ -17,12 +17,13 @@ _test
 _cgo_defun.c
 _cgo_gotypes.go
 _cgo_export.*
-
+*.coverprofile
 _testmain.go
 
 *.exe
 *.test
 *.prof
 
+cf_will_it_connect.coverprofile
 cf_will_it_connect
 scratch
