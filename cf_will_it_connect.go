@@ -3,10 +3,14 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"net/http"
+	"strconv"
+	"strings"
 
 	"github.com/cloudfoundry/cli/plugin"
+	"github.com/cloudfoundry/cli/plugin/models"
 )
 
 const wicPath string = "/v2/willitconnect"
@@ -30,7 +34,7 @@ func (c *WillItConnect) GetMetadata() plugin.PluginMetadata {
 				Alias:    "wic",
 				HelpText: "Validates connectivity between CF and a target \n",
 				UsageDetails: plugin.Usage{
-					Usage: "willitconnect\n   cf willitconnect <host> <port>",
+					Usage: "willitconnect\n   Usage: cf willitconnect -host=<host> -port=<port>",
 				},
 			},
 		},
@@ -43,18 +47,36 @@ func main() {
 
 //Run ...
 func (c *WillItConnect) Run(cliConnection plugin.CliConnection, args []string) {
+	wicFlags := flag.NewFlagSet("wicFlags", flag.ExitOnError)
 
-	if len(args[1:]) < 2 {
-		fmt.Println([]string{"Usage: cf willitconnect <host> <port>"})
-		return
+	hostPtr := wicFlags.String("host", "", "host for connection")
+	portPtr := wicFlags.Int("port", -1, "port for connection")
+	proxyHostPtr := wicFlags.String("proxyHost", "", "host for proxy")
+	proxyPortPtr := wicFlags.Int("proxyPort", -1, "port for proxy")
 
+	wicFlags.Parse(args[1:]) // first arg is "willitconnect"
+	fmt.Println("host:", *hostPtr)
+	fmt.Println("port:", *portPtr)
+	fmt.Println("proxyHost:", *proxyHostPtr)
+	fmt.Println("proxyPort:", *proxyPortPtr)
+	fmt.Println("tail:", wicFlags.Args())
+
+	// port is not requied if host is a url
+
+	if strings.HasPrefix(*hostPtr, "http://") {
+		*portPtr = 80
 	}
 
-	host := args[1]
-	port := args[2]
+	if strings.HasPrefix(*hostPtr, "https://") {
+		*portPtr = 443
+	}
+
+	if *portPtr == -1 || *hostPtr == "" {
+		fmt.Println([]string{"Usage: cf willitconnect -host=<host> -port=<port>"})
+	}
 
 	currOrg, err := cliConnection.GetCurrentOrg()
-	if err != nil {
+	if (err != nil || currOrg == plugin_models.Organization{}) {
 		fmt.Println("Unable to connect to CF, use cf login first")
 		return
 	}
@@ -65,6 +87,10 @@ func (c *WillItConnect) Run(cliConnection plugin.CliConnection, args []string) {
 		return
 	}
 
+	if len(org.Domains) < 1 {
+		fmt.Println("Unable to find valid domain, please view cf domains")
+	}
+
 	baseURL := org.Domains[0].Name
 	if baseURL == "" {
 		fmt.Println("Unable to find valid domain, please view cf domains")
@@ -72,8 +98,11 @@ func (c *WillItConnect) Run(cliConnection plugin.CliConnection, args []string) {
 	}
 
 	wicURL := "https://" + wicRoute + baseURL + wicPath
-	fmt.Println([]string{"Host: ", host, " - Port: ", port, " - WillItConnect: ", wicURL})
-	c.connect(host, port, wicURL)
+	fmt.Println([]string{"Host: ", *hostPtr, " - Port: ", strconv.Itoa(*portPtr), " - WillItConnect: ", wicURL})
+	if *proxyHostPtr != "" && *proxyPortPtr != -1 {
+		fmt.Println([]string{"Proxy: " + *proxyHostPtr + ":" + strconv.Itoa(*proxyPortPtr)})
+	}
+	c.connect(*hostPtr, strconv.Itoa(*portPtr), wicURL, *proxyHostPtr, strconv.Itoa(*proxyPortPtr))
 
 }
 
@@ -87,8 +116,15 @@ type wicResponse struct {
 	ValidURL      bool   `json:"validUrl"`
 }
 
-func (c *WillItConnect) connect(host string, port string, url string) {
-	payload := []byte(`{"target":"` + host + `:` + port + `"}`)
+func (c *WillItConnect) connect(host string, port string, url string, proxyHost string, proxyPort string) {
+
+	var payload []byte
+	if proxyHost != "" && proxyPort != "-1" {
+		fmt.Println(`{"target":"` + host + `:` + port + `", "http_proxy":"` + proxyHost + `:` + proxyPort + `"}`)
+		payload = []byte(`{"target":"` + host + `:` + port + `", "http_proxy":"` + proxyHost + `:` + proxyPort + `"}`)
+	} else {
+		payload = []byte(`{"target":"` + host + `:` + port + `"}`)
+	}
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(payload))
 	req.Header.Set("Content-Type", "application/json")
 

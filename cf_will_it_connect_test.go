@@ -13,7 +13,6 @@ import (
 	"gopkg.in/h2non/gock.v0"
 )
 
-const apiURL string = "http://api.cfapps.pivotal.io"
 const wicPath string = "/v2/willitconnect"
 const wicURL string = "https://willitconnect.cfapps.io"
 const goodRequest string = `{"target":"foo.com:80"}`
@@ -28,22 +27,50 @@ var _ = Describe("CfWillItConnect", func() {
 		var willItConnectPlugin *WillItConnect
 		var goodOrg plugin_models.GetOrg_Model
 		var badOrg plugin_models.GetOrg_Model
+		var goodArgs []string
+		var badArgs []string
 
 		BeforeEach(func() {
 			fakeCliConnection = &pluginfakes.FakeCliConnection{}
 			willItConnectPlugin = &WillItConnect{}
 			badOrg = plugin_models.GetOrg_Model{Domains: []plugin_models.GetOrg_Domains{plugin_models.GetOrg_Domains{}}}
 			goodOrg = plugin_models.GetOrg_Model{Domains: []plugin_models.GetOrg_Domains{plugin_models.GetOrg_Domains{Name: "cfapps.io"}}}
+			goodArgs = []string{"willitconnect", "-host=foo.com", "-port=80"}
+			badArgs = []string{"willitconnect", "-host=bar.com", "-port=80"}
 		})
 
-		Context("only one argument is provided", func() {
+		Context("less than two arguments are provided", func() {
 
 			It("displays a usage message", func() {
 
 				output := CaptureOutput(func() {
 					willItConnectPlugin.Run(fakeCliConnection, []string{"willitconnect", "blah"})
 				})
-				Expect(output).To(ContainSubstrings([]string{"Usage:", "cf", "willitconnect", "<host>", "<port>"}))
+				Expect(output).To(ContainSubstrings([]string{"Usage:", "cf", "willitconnect", "-host=<host>", "-port=<port>"}))
+			})
+		})
+
+		Context("host and port are not provided", func() {
+
+			It("displays a usage message", func() {
+
+				output := CaptureOutput(func() {
+					willItConnectPlugin.Run(fakeCliConnection, []string{"willitconnect", "blah", "blah"})
+				})
+
+				Expect(output).To(ContainSubstrings([]string{"Usage:", "cf", "willitconnect", "-host=<host>", "-port=<port>"}))
+			})
+		})
+
+		Context("CF Cli is unavailable", func() {
+
+			It("displays a usage message", func() {
+
+				output := CaptureOutput(func() {
+
+					willItConnectPlugin.Run(fakeCliConnection, goodArgs)
+				})
+				Expect(output).To(ContainSubstrings([]string{"Unable to connect to CF, use cf login first"}))
 			})
 		})
 
@@ -53,7 +80,7 @@ var _ = Describe("CfWillItConnect", func() {
 
 				fakeCliConnection.GetCurrentOrgReturns(plugin_models.Organization{}, errors.New("No org!"))
 				output := CaptureOutput(func() {
-					willItConnectPlugin.Run(fakeCliConnection, []string{"willitconnect", "foo.com", "80"})
+					willItConnectPlugin.Run(fakeCliConnection, goodArgs)
 				})
 				Expect(output).To(ContainSubstrings([]string{"Unable to connect to CF, use cf login first"}))
 			})
@@ -65,7 +92,7 @@ var _ = Describe("CfWillItConnect", func() {
 				fakeCliConnection.GetOrgReturns(badOrg, errors.New("Org is a lie!"))
 				fakeCliConnection.GetCurrentOrgReturns(plugin_models.Organization{OrganizationFields: plugin_models.OrganizationFields{Name: "org"}}, nil)
 				output := CaptureOutput(func() {
-					willItConnectPlugin.Run(fakeCliConnection, []string{"willitconnect", "foo.com", "80"})
+					willItConnectPlugin.Run(fakeCliConnection, goodArgs)
 				})
 				Expect(output).To(ContainSubstrings([]string{"Unable to find valid org, please view cf target"}))
 			})
@@ -74,7 +101,7 @@ var _ = Describe("CfWillItConnect", func() {
 				fakeCliConnection.GetOrgReturns(badOrg, nil)
 				fakeCliConnection.GetCurrentOrgReturns(plugin_models.Organization{OrganizationFields: plugin_models.OrganizationFields{Name: "org"}}, nil)
 				output := CaptureOutput(func() {
-					willItConnectPlugin.Run(fakeCliConnection, []string{"willitconnect", "foo.com", "80"})
+					willItConnectPlugin.Run(fakeCliConnection, goodArgs)
 				})
 				Expect(output).To(ContainSubstrings([]string{"Unable to find valid domain, please view cf domains"}))
 			})
@@ -95,7 +122,7 @@ var _ = Describe("CfWillItConnect", func() {
 						Reply(404).
 						JSON(`{}`)
 					output := CaptureOutput(func() {
-						willItConnectPlugin.Run(fakeCliConnection, []string{"willitconnect", "foo.com", "80"})
+						willItConnectPlugin.Run(fakeCliConnection, goodArgs)
 					})
 					Expect(output).To(ContainSubstrings([]string{"Host:", "foo.com", "-",
 						"Port:", "80", "-",
@@ -116,7 +143,7 @@ var _ = Describe("CfWillItConnect", func() {
 						Reply(200).
 						BodyString("totes")
 					output := CaptureOutput(func() {
-						willItConnectPlugin.Run(fakeCliConnection, []string{"willitconnect", "foo.com", "80"})
+						willItConnectPlugin.Run(fakeCliConnection, goodArgs)
 					})
 					Expect(output).To(ContainSubstrings([]string{"Host:", "foo.com", "-",
 						"Port:", "80", "-",
@@ -137,12 +164,51 @@ var _ = Describe("CfWillItConnect", func() {
 						Reply(200).
 						JSON(goodResponse)
 					output := CaptureOutput(func() {
-						willItConnectPlugin.Run(fakeCliConnection, []string{"willitconnect", "foo.com", "80"})
+						willItConnectPlugin.Run(fakeCliConnection, goodArgs)
 					})
 					Expect(output).To(ContainSubstrings([]string{"Host:", "foo.com", "-",
 						"Port:", "80", "-",
 						"WillItConnect:", wicURL + wicPath}))
 					Expect(output).To(ContainSubstrings([]string{"I am able to connect"}))
+				})
+
+				Context("the provided host is a url", func() {
+
+					It("displays a connect confirmation when no port is provided for https", func() {
+						fakeCliConnection.GetOrgReturns(goodOrg, nil)
+						fakeCliConnection.GetCurrentOrgReturns(plugin_models.Organization{OrganizationFields: plugin_models.OrganizationFields{Name: "org"}}, nil)
+						defer gock.Off()
+						gock.New(wicURL).
+							Post(wicPath).
+							JSON(`{"target":"https://foo.com:443"}`).
+							Reply(200).
+							JSON(goodResponse)
+						output := CaptureOutput(func() {
+							willItConnectPlugin.Run(fakeCliConnection, []string{"willitconnect", "-host=https://foo.com"})
+						})
+						Expect(output).To(ContainSubstrings([]string{"Host:", "https://foo.com", "-",
+							"Port:", "443", "-",
+							"WillItConnect:", wicURL + wicPath}))
+						Expect(output).To(ContainSubstrings([]string{"I am able to connect"}))
+					})
+
+					It("displays a connect confirmation when no port is provided for http", func() {
+						fakeCliConnection.GetOrgReturns(goodOrg, nil)
+						fakeCliConnection.GetCurrentOrgReturns(plugin_models.Organization{OrganizationFields: plugin_models.OrganizationFields{Name: "org"}}, nil)
+						defer gock.Off()
+						gock.New(wicURL).
+							Post(wicPath).
+							JSON(`{"target":"http://foo.com:80"}`).
+							Reply(200).
+							JSON(goodResponse)
+						output := CaptureOutput(func() {
+							willItConnectPlugin.Run(fakeCliConnection, []string{"willitconnect", "-host=http://foo.com"})
+						})
+						Expect(output).To(ContainSubstrings([]string{"Host:", "http://foo.com", "-",
+							"Port:", "80", "-",
+							"WillItConnect:", wicURL + wicPath}))
+						Expect(output).To(ContainSubstrings([]string{"I am able to connect"}))
+					})
 				})
 			})
 			Context("an unreachable host is provided", func() {
@@ -160,12 +226,51 @@ var _ = Describe("CfWillItConnect", func() {
 						JSON(badResponse)
 
 					output := CaptureOutput(func() {
-						willItConnectPlugin.Run(fakeCliConnection, []string{"willitconnect", "bar.com", "80"})
+						willItConnectPlugin.Run(fakeCliConnection, badArgs)
 					})
 					Expect(output).To(ContainSubstrings([]string{"Host:", "bar.com", "-",
 						"Port:", "80", "-",
 						"WillItConnect:", wicURL + wicPath}))
 					Expect(output).To(ContainSubstrings([]string{"I am unable to connect"}))
+				})
+			})
+			Context("a proxy is provided", func() {
+
+				It("displays a connect confirmation when a proxy is provided", func() {
+					fakeCliConnection.GetOrgReturns(goodOrg, nil)
+					fakeCliConnection.GetCurrentOrgReturns(plugin_models.Organization{OrganizationFields: plugin_models.OrganizationFields{Name: "org"}}, nil)
+					defer gock.Off()
+					gock.New(wicURL).
+						Post(wicPath).
+						JSON(`{"target":"foo.com:80", "http_proxy":"proxy.com:8080"}`).
+						Reply(200).
+						JSON(goodResponse)
+					output := CaptureOutput(func() {
+						willItConnectPlugin.Run(fakeCliConnection, []string{"willitconnect", "-host=foo.com", "-port=80", "-proxyHost=proxy.com", "-proxyPort=8080"})
+					})
+					Expect(output).To(ContainSubstrings([]string{"Host:", "foo.com", "-",
+						"Port:", "80", "-",
+						"WillItConnect:", wicURL + wicPath}))
+					Expect(output).To(ContainSubstrings([]string{"Proxy: proxy.com:8080"}))
+					Expect(output).To(ContainSubstrings([]string{"I am able to connect"}))
+				})
+
+				It("displays a connect message, and usage message when proxy but not port is provided", func() {
+					fakeCliConnection.GetOrgReturns(goodOrg, nil)
+					fakeCliConnection.GetCurrentOrgReturns(plugin_models.Organization{OrganizationFields: plugin_models.OrganizationFields{Name: "org"}}, nil)
+					defer gock.Off()
+					gock.New(wicURL).
+						Post(wicPath).
+						JSON(`{"target":"foo.com:80"}`).
+						Reply(200).
+						JSON(goodResponse)
+					output := CaptureOutput(func() {
+						willItConnectPlugin.Run(fakeCliConnection, []string{"willitconnect", "-host=foo.com", "-port=80", "-proxyHost=proxy.com"})
+					})
+					Expect(output).To(ContainSubstrings([]string{"Host:", "foo.com", "-",
+						"Port:", "80", "-",
+						"WillItConnect:", wicURL + wicPath}))
+					Expect(output).To(ContainSubstrings([]string{"I am able to connect"}))
 				})
 			})
 		})
