@@ -2,7 +2,8 @@ box: golang
 build:
   steps:
     - setup-go-workspace
-    - wercker/golint
+    - wercker/golint:
+        exclude: "vendor/"
 
     # Gets the dependencies
     - script:

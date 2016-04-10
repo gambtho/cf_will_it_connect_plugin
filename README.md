@@ -1,6 +1,6 @@
 # cf willitconnect
 
-[![wercker status](https://app.wercker.com/status/e1f851f98e9028a7ccd9a8a38e84eca0/m "wercker status")](https://app.wercker.com/project/bykey/e1f851f98e9028a7ccd9a8a38e84eca0)
+[![wercker status](https://app.wercker.com/status/6947d629f21a39d5700a5c50b705fe86/s "wercker status")](https://app.wercker.com/project/bykey/6947d629f21a39d5700a5c50b705fe86)
 
 Cloud Foundry CLI plugin to validate connectivity between a CF instance and a thing
 

@@ -7,7 +7,7 @@ import (
 	"github.com/cloudfoundry/cli/plugin/pluginfakes"
 	. "github.com/cloudfoundry/cli/testhelpers/io"
 	. "github.com/cloudfoundry/cli/testhelpers/matchers"
-	. "github.com/gambtho/cf_will_it_connect"
+	. "github.com/gambtho/cf_will_it_connect_plugin"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"gopkg.in/h2non/gock.v0"

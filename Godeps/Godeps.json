@@ -1,6 +1,6 @@
 {
-	"ImportPath": "github.com/gambtho/cf_will_it_connect",
-	"GoVersion": "go1.5",
+	"ImportPath": "github.com/gambtho/cf_will_it_connect_plugin",
+	"GoVersion": "go1.6",
 	"GodepVersion": "v62",
 	"Deps": [
 		{
