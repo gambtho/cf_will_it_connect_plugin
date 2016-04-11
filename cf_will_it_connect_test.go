@@ -255,7 +255,7 @@ var _ = Describe("CfWillItConnect", func() {
 					Expect(output).To(ContainSubstrings([]string{"I am able to connect"}))
 				})
 
-				It("displays a connect message, and usage message when proxy but not port is provided", func() {
+				It("ignores proxy when proxyhost but not proxyport is provided", func() {
 					fakeCliConnection.GetOrgReturns(goodOrg, nil)
 					fakeCliConnection.GetCurrentOrgReturns(plugin_models.Organization{OrganizationFields: plugin_models.OrganizationFields{Name: "org"}}, nil)
 					defer gock.Off()
@@ -270,6 +270,26 @@ var _ = Describe("CfWillItConnect", func() {
 					Expect(output).To(ContainSubstrings([]string{"Host:", "foo.com", "-",
 						"Port:", "80", "-",
 						"WillItConnect:", wicURL + wicPath}))
+					Expect(output).To(ContainSubstrings([]string{"I am able to connect"}))
+				})
+			})
+			Context("alternate route is provided", func() {
+
+				It("displays a connect confirmation", func() {
+					fakeCliConnection.GetOrgReturns(goodOrg, nil)
+					fakeCliConnection.GetCurrentOrgReturns(plugin_models.Organization{OrganizationFields: plugin_models.OrganizationFields{Name: "org"}}, nil)
+					defer gock.Off()
+					gock.New("https://willitconnect-smoke-test.cfapps.io").
+						Post(wicPath).
+						JSON(goodRequest).
+						Reply(200).
+						JSON(goodResponse)
+					output := CaptureOutput(func() {
+						willItConnectPlugin.Run(fakeCliConnection, []string{"willitconnect", "-host=foo.com", "-port=80", "-route=willitconnect-smoke-test"})
+					})
+					Expect(output).To(ContainSubstrings([]string{"Host:", "foo.com", "-",
+						"Port:", "80", "-",
+						"WillItConnect:", "https://willitconnect-smoke-test.cfapps.io" + wicPath}))
 					Expect(output).To(ContainSubstrings([]string{"I am able to connect"}))
 				})
 			})

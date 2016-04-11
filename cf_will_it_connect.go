@@ -14,7 +14,7 @@ import (
 )
 
 const wicPath string = "/v2/willitconnect"
-const wicRoute string = "willitconnect."
+const wicRoute string = "willitconnect"
 
 //WillItConnect ...
 type WillItConnect struct{}
@@ -53,12 +53,14 @@ func (c *WillItConnect) Run(cliConnection plugin.CliConnection, args []string) {
 	portPtr := wicFlags.Int("port", -1, "port for connection")
 	proxyHostPtr := wicFlags.String("proxyHost", "", "host for proxy")
 	proxyPortPtr := wicFlags.Int("proxyPort", -1, "port for proxy")
+	routePtr := wicFlags.String("route", "", "route for willitconnect")
 
 	wicFlags.Parse(args[1:]) // first arg is "willitconnect"
 	fmt.Println("host:", *hostPtr)
 	fmt.Println("port:", *portPtr)
 	fmt.Println("proxyHost:", *proxyHostPtr)
 	fmt.Println("proxyPort:", *proxyPortPtr)
+	fmt.Println("route:", *routePtr)
 	fmt.Println("tail:", wicFlags.Args())
 
 	// port is not requied if host is a url
@@ -97,7 +99,12 @@ func (c *WillItConnect) Run(cliConnection plugin.CliConnection, args []string) {
 		return
 	}
 
-	wicURL := "https://" + wicRoute + baseURL + wicPath
+	route := wicRoute
+	if *routePtr != "" {
+		route = *routePtr
+	}
+
+	wicURL := "https://" + route + "." + baseURL + wicPath
 	fmt.Println([]string{"Host: ", *hostPtr, " - Port: ", strconv.Itoa(*portPtr), " - WillItConnect: ", wicURL})
 	if *proxyHostPtr != "" && *proxyPortPtr != -1 {
 		fmt.Println([]string{"Proxy: " + *proxyHostPtr + ":" + strconv.Itoa(*proxyPortPtr)})
