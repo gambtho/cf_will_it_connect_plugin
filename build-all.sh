@@ -21,19 +21,19 @@ if [[ "$1" = "release" ]] ; then
 fi
 
 GOOS=linux GOARCH=amd64 godep go build
-LINUX64_SHA1=`cat cf_will_it_connect | openssl sha1`
+LINUX64_SHA1=`cat cf_will_it_connect_plugin | openssl sha1`
 mkdir -p bin/linux64
-mv cf_will_it_connect bin/linux64
+mv cf_will_it_connect_plugin bin/linux64
 
 GOOS=darwin GOARCH=amd64 godep go build
-OSX_SHA1=`cat cf_will_it_connect | openssl sha1`
+OSX_SHA1=`cat cf_will_it_connect_plugin | openssl sha1`
 mkdir -p bin/osx
-mv cf_will_it_connect bin/osx
+mv cf_will_it_connect_plugin bin/osx
 
 GOOS=windows GOARCH=amd64 godep go build
-WIN64_SHA1=`cat cf_will_it_connect.exe | openssl sha1`
+WIN64_SHA1=`cat cf_will_it_connect_plugin.exe | openssl sha1`
 mkdir -p bin/win64
-mv cf_will_it_connect.exe bin/win64
+mv cf_will_it_connect_plugin.exe bin/win64
 
 cat repo-index.yml |
 sed "s/osx-sha1/$OSX_SHA1/" |
