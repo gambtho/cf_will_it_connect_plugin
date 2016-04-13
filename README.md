@@ -16,8 +16,14 @@ willitconnect will attempt an http connection
 
 ```
 $ cf willitconnect -host=<host> -port=<port>
-$ cf willitconnect url
+$ cf willitconnect <url>
 $ cf willitconnect -host=<host> -port=<port> -proxyHost=<proxyHost> -proxyPort=<proxyPort>
+```
+
+##install
+
+```
+$ cf install-plugin cf-willitconnect -r CF-Community
 ```
 
 ##Todo
