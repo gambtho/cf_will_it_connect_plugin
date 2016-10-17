@@ -11,13 +11,14 @@ This simplifies troubleshooting, but was also partly inspired by [lmgtfy.com](ht
 ##Usage
 
 Default functionality assumes willitconnect is the route used for the willitconnect application running on your CF instance, and creates a socket connection to the specified port and host.  If desired, you can specify an alternate
-route for willitconnect and/or specify a proxy for willitconnect to use.    In addition, if the host you pass is a url,
+route for willitconnect with the `--route` flag and/or specify a proxy for willitconnect to use.    In addition, if the host you pass is a url,
 willitconnect will attempt an http connection
 
 ```
 $ cf willitconnect -host=<host> -port=<port>
 $ cf willitconnect <url>
 $ cf willitconnect -host=<host> -port=<port> -proxyHost=<proxyHost> -proxyPort=<proxyPort>
+$ cf willitconnect --route=<alternative wic route> --host=<host> -port=<port>
 ```
 
 ##install
