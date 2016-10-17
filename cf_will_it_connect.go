@@ -15,6 +15,7 @@ import (
 
 const wicPath string = "/v2/willitconnect"
 const wicRoute string = "willitconnect"
+const usage string = "cf willitconnect -host=<host> -port=<port> [proxyHost=<proxyHost>] proxyPort=<proxyPort>] [-route=<route>] "
 
 //WillItConnect ...
 type WillItConnect struct{}
@@ -154,18 +155,24 @@ func (c *WillItConnect) parseArgs(args []string, baseURL *string) (*wicRequest, 
 		}
 	}
 
-	route := wicRoute
+	wicURL := "https://" + wicRoute + "." + *baseURL
 	if *routePtr != "" {
-		route = *routePtr
+		if 2 > strings.Count(*routePtr, ".") {
+			return nil, []string{"-route must be a fqdn"}
+		}
+
+		if strings.HasPrefix(*routePtr, "http") {
+			wicURL = *routePtr
+		} else {
+			wicURL = "https://" + *routePtr
+		}
 	}
+	wicURL += wicPath
 
 	hasProxy := false
 	if *proxyHostPtr != "" && *proxyPortPtr != -1 {
 		hasProxy = true
 	}
-
-	wicURL := "https://" + route + "." + *baseURL + wicPath
-
 	request := wicRequest{*hostPtr, strconv.Itoa(*portPtr), wicURL, hasProxy, *proxyHostPtr, strconv.Itoa(*proxyPortPtr)}
 	return &request, nil
 }
