@@ -17,6 +17,7 @@ const wicPath string = "/v2/willitconnect"
 const wicURL string = "https://willitconnect.cfapps.io"
 const goodRequest string = `{"target":"foo.com:80"}`
 const goodResponse string = `{"lastChecked": 0, "entry": "foo.com", "canConnect": true, "httpStatus": 200, "validHostname": false, "validUrl": true}`
+const goodResponseWithTime string = `{"lastChecked": 0, "entry": "foo.com", "canConnect": true, "httpStatus": 200, "validHostname": false, "validUrl": true, "responseTime": 3}`
 const badRequest string = `{"target":"bar.com:80"}`
 const badResponse string = `{"lastChecked": 0,"entry": "bar.com","canConnect":false,"validHostname": false,"validUrl": true}`
 
@@ -332,6 +333,25 @@ var _ = Describe("CfWillItConnect", func() {
 						"Port:", "80", "-",
 						"WillItConnect:", "https://willitconnect-smoke-test.cfapps.io" + wicPath}))
 					Expect(output).To(ContainSubstrings([]string{"I am able to connect"}))
+				})
+
+				It("It shows the response time", func() {
+					fakeCliConnection.GetOrgReturns(goodOrg, nil)
+					fakeCliConnection.GetCurrentOrgReturns(plugin_models.Organization{OrganizationFields: plugin_models.OrganizationFields{Name: "org"}}, nil)
+					defer gock.Off()
+					gock.New("https://willitconnect-smoke-test.cfapps.io").
+						Post(wicPath).
+						JSON(goodRequest).
+						Reply(200).
+						JSON(goodResponseWithTime)
+					output := CaptureOutput(func() {
+						willItConnectPlugin.Run(fakeCliConnection, []string{"willitconnect", "-host=foo.com", "-port=80", "-route=https://willitconnect-smoke-test.cfapps.io"})
+					})
+					Expect(output).To(ContainSubstrings([]string{"Host:", "foo.com", "-",
+						"Port:", "80", "-",
+						"WillItConnect:", "https://willitconnect-smoke-test.cfapps.io" + wicPath}))
+					Expect(output).To(ContainSubstrings([]string{"I am able to connect"}))
+					Expect(output).To(ContainSubstrings([]string{"it took 3 ms"}))
 				})
 
 				It("chokes if we don't provide a full URL for route", func() {
