@@ -95,6 +95,7 @@ type wicResponse struct {
 	HTTPStatus    int    `json:"httpStatus"`
 	ValidHostname bool   `json:"validHostname"`
 	ValidURL      bool   `json:"validUrl"`
+	ResponseTime  int    `json:"responseTime,omitempty"`
 }
 
 func (c *WillItConnect) getBaseURL(cliConnection plugin.CliConnection) (*string, []string) {
@@ -201,10 +202,16 @@ func (c *WillItConnect) connect(request *wicRequest) ([]string, []string) {
 		return nil, []string{"Invalid response from willitconnect: ", decodeErr.Error()}
 	}
 	var response []string
+
 	if body.CanConnect {
 		response = []string{"I am able to connect"}
 	} else {
 		response = []string{"I am unable to connect"}
+	}
+
+	if body.ResponseTime != 0 {
+		timeText := fmt.Sprintf("it took %d ms.", body.ResponseTime)
+		response = append(response, timeText)
 	}
 	return response, nil
 }
