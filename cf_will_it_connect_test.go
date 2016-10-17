@@ -308,12 +308,45 @@ var _ = Describe("CfWillItConnect", func() {
 						Reply(200).
 						JSON(goodResponse)
 					output := CaptureOutput(func() {
-						willItConnectPlugin.Run(fakeCliConnection, []string{"willitconnect", "-host=foo.com", "-port=80", "-route=willitconnect-smoke-test"})
+						willItConnectPlugin.Run(fakeCliConnection, []string{"willitconnect", "-host=foo.com", "-port=80", "-route=willitconnect-smoke-test.cfapps.io"})
 					})
 					Expect(output).To(ContainSubstrings([]string{"Host:", "foo.com", "-",
 						"Port:", "80", "-",
 						"WillItConnect:", "https://willitconnect-smoke-test.cfapps.io" + wicPath}))
 					Expect(output).To(ContainSubstrings([]string{"I am able to connect"}))
+				})
+
+				It("It accepts https in the route", func() {
+					fakeCliConnection.GetOrgReturns(goodOrg, nil)
+					fakeCliConnection.GetCurrentOrgReturns(plugin_models.Organization{OrganizationFields: plugin_models.OrganizationFields{Name: "org"}}, nil)
+					defer gock.Off()
+					gock.New("https://willitconnect-smoke-test.cfapps.io").
+						Post(wicPath).
+						JSON(goodRequest).
+						Reply(200).
+						JSON(goodResponse)
+					output := CaptureOutput(func() {
+						willItConnectPlugin.Run(fakeCliConnection, []string{"willitconnect", "-host=foo.com", "-port=80", "-route=https://willitconnect-smoke-test.cfapps.io"})
+					})
+					Expect(output).To(ContainSubstrings([]string{"Host:", "foo.com", "-",
+						"Port:", "80", "-",
+						"WillItConnect:", "https://willitconnect-smoke-test.cfapps.io" + wicPath}))
+					Expect(output).To(ContainSubstrings([]string{"I am able to connect"}))
+				})
+
+				It("chokes if we don't provide a full URL for route", func() {
+					fakeCliConnection.GetOrgReturns(goodOrg, nil)
+					fakeCliConnection.GetCurrentOrgReturns(plugin_models.Organization{OrganizationFields: plugin_models.OrganizationFields{Name: "org"}}, nil)
+					defer gock.Off()
+					gock.New("https://willitconnect-smoke-test.cfapps.io").
+						Post(wicPath).
+						JSON(goodRequest).
+						Reply(200).
+						JSON(goodResponse)
+					output := CaptureOutput(func() {
+						willItConnectPlugin.Run(fakeCliConnection, []string{"willitconnect", "-host=foo.com", "-port=80", "-route=isbad"})
+					})
+					Expect(output).To(ContainSubstrings([]string{"-route must be a fqdn"}))
 				})
 			})
 			Context("no flags are passed", func() {
